@@ -1,0 +1,235 @@
+/*
+ * main.S
+ *
+ *  Created on: Apr 4, 2022
+ *      Author: jacob
+ */
+
+# WARNING: DO NOT HAVE MOTORS DIRECTLY PLUGGED INTO BLACKBOARD
+#          WHEN THE BOARD IS POWERED UP AND BEFORE PROGRAMMING THE BOARD.
+# 		   THE H-BRIDGE WILL CREATE A SHORT-CIRCUIT AND YOU WILL DAMAGE IT.
+#
+# 		   YOU CAN CONNECT THE MOTORS AFTER YOU HAVE UPLOADED THE PROGRAM TO YOUR BOARD
+#
+#		   IF YOU SMELL BURNING, SHUT THE POWER OFF ON YOUR BOARD IMMEDIATELY TO PREVENT DAMAGE.
+#
+#		   This issue should largely be absent if you are using the DHB1 PMOD.
+#
+#		   However, still know that if you leave the DHB1 module and the battery connected,
+#		   the motors will spin at full speed prior to programming your board.
+
+.include "../src/robomal.S"
+.include "../src/GPIO.S"
+.include "../src/esp32.S"
+.include "../src/UART.S"
+.include "../src/RobotMotors.S"
+
+.set SW_BASEADDR, 0x41220000
+.set BTN_BASEADDR, 0x41200000
+
+.global main
+
+.data
+
+# jump table for various modes
+Mode: .word Nothing, Autonomous, Programmable, RC, line_following
+
+.text
+
+main:
+
+	# Setup Motor 0 (connected to top row of PMODC)
+	LDR r1, =MOTOR_0_BASEADDR
+	BL setup_motor
+
+	# Setup Motor 1 (connected to bottom row of PMODC)
+	LDR r1, =MOTOR_1_BASEADDR
+	BL setup_motor
+
+	# set up all timers and interrupts
+	# place all of my setup here
+	BL initialize_GPIO
+
+	# setup interrupts
+	BL disable_interrupts
+	BL intialize_GPIO_interrupts
+	BL configure_GTC
+	BL configure_GIC
+
+	# Xil_ExceptionRegisterHandler(input id, IRQ_Handler, Data)
+	# input parameters below
+	MOV r0, #5
+	LDR r1, =IRQ_Handler
+	MOV r2, #0
+	BL Xil_ExceptionRegisterHandler
+
+	BL enable_interrupts
+
+	# setup station commands
+	BL setup_esp32
+	BL setupSVNSEG
+	BL timer
+
+
+	whileOne:
+
+		# UART0 is communication to and from the ESP32 chip
+		#LDR r0, =UART0_BASEADDR
+		# UART1 is communication to and from the PC
+		#LDR r1, =UART1_BASEADDR
+
+		# Check to see if there is anything in the UART0 RX Buffer
+		# Did the ESP32 chip send the Blackboard anything?
+		#LDR r2, [r0, #0x30]
+		#CMP r2, #0
+
+		# If there was something on the FIFO RX buffer, send it right
+		# back to the user via UART1 TX FIFO
+		# PC is going to receive the message, which will help us
+		# see the data incoming from the ESP32
+		#STRNE r2, [r1, #0x30]
+
+		# Check to see if there is anything in the UART1 RX Buffer
+		# Did the user send the Blackboard anything from the PC?
+		#LDR r3, [r1, #0x30]
+		#CMP r3, #0
+		#BEQ whileOne
+
+		# If there was something on the FIFO RX buffer, send it right
+		# back to the user via UART0 TX FIFO
+		# ESP32 is going to receive the message from our PC
+		#STR r3, [r0, #0x30]
+
+		# The full message coming from the PC doesn't include a '\n' (LF)
+		# character, so we need to add one to the end of my message
+		#CMP r3, #'\r'
+		#MOVEQ r4, #'\n'
+		#STREQ r4, [r0, #0x30]
+
+
+		#in r0 is the switch state
+		BL get_switches
+		AND r0, r0, #0xF
+		MOV r2, r0
+
+		Modes:
+
+			# branching to correct mode using switch state
+			LDR r0, =Mode
+			LDR r1, [r0, r2, LSL #2]
+			BX r1
+
+			Nothing:
+
+				# Program will wait for a switch to choose a mode
+
+				B endmode
+
+			Autonomous:
+
+				# Autonomous mode, runs a default program
+
+				LDR r0, =ROBO_Instructions
+				LDR r1, [r0]
+				# Store the instruction from the keypad to the label with iterator
+				MOV r5, #0x42FF
+				MOV r2, #0
+				STR r5, [r0, r2, LSL #1]
+
+				MOV r5, #0x43FF
+				MOV r2, #1
+				STR r5, [r0, r2, LSL #1]
+
+				# can keep going with how many instructions you want
+				# just end it with the halt instruction
+				MOV r5, #0x3300
+				MOV r2, #7
+				STR r5, [r0, r2, LSL #1]
+
+				BL runROBO_Program
+
+				B endmode
+
+			Programmable:
+
+				# Programmable mode, you send instructions
+				# then it excutes all of them
+				# 10 instructions
+
+				commands:
+
+				# sending in the string of bytes
+
+	   			# BL recieve_string_UART0
+	   			# assume data is in r1
+				BL writeSVNSEG
+				BL read_esp32
+
+				# data now in r5
+				MOV r5, r1
+
+				# keeps track of the iteration amount
+				MOV r4, #0
+
+				# check if 0x33 on keypad entered
+				CMP r5, #0x3300
+				BEQ commands_end
+
+				LDR r0, =ROBO_Instructions
+				LDR r1, [r0]
+				# Store the instruction from the keypad to the label with iterator
+				STR r5, [r0, r4, LSL #1]
+
+				ADD r4, r4, #1
+
+				B commands
+
+				commands_end:
+
+				BL runROBO_Program
+
+				B endmode
+
+			RC:
+
+				#Send one instruction and it excutes it
+
+				# sending in the string of bytes
+
+	   		# BL recieve_string_UART0
+	   		# assume data is in r1
+				BL writeSVNSEG
+				BL read_esp32
+
+				# data now in r5
+				MOV r5, r1
+
+				LDR r0, =ROBO_Instructions
+				LDR r1, [r0]
+				# Store the instruction from the keypad to the label with iterator
+				MOV r2, #0
+				STR r5, [r0, r2, LSL #1]
+				# termination code after one instruction
+				MOV r5, #0x3300
+				MOV r2, #1
+				STR r5, [r0, r2, LSL #1]
+
+				BL runROBO_Program
+
+				B endmode
+
+			line_following:
+
+				# follows the black lines
+				# connor got this
+				B endmode
+
+
+			endmode:
+
+
+
+	B whileOne
+
+
+.end
