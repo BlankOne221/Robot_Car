@@ -251,6 +251,7 @@ execute:
 		BL start_timer
 		timer_loop:
 		LDR r0, =GTC_BASEADDR
+		LDR r1, [r0, #0x
 		
 
 		B endcase
