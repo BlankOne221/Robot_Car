@@ -248,6 +248,11 @@ execute:
 		BL change_motor_speed
 		BL change_motor_dir
 
+		BL start_timer
+		timer_loop:
+		LDR r0, =GTC_BASEADDR
+		
+
 		B endcase
 
 		# Move the robot backward at slow, medium or fast same as forward
