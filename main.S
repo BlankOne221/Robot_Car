@@ -171,9 +171,7 @@ main:
 				# keeps track of the iteration amount
 				MOV r4, #0
 
-				# check if 0x33 on keypad entered
-				CMP r5, #0x3300
-				BEQ commands_end
+				
 
 				LDR r0, =ROBO_Instructions
 				LDR r1, [r0]
@@ -181,6 +179,10 @@ main:
 				STR r5, [r0, r4, LSL #1]
 
 				ADD r4, r4, #1
+
+				# check if 0x33 on keypad entered
+				CMP r5, #0x3300
+				BEQ commands_end
 
 				B commands
 
