@@ -55,3 +55,27 @@ MVN r2, #1
 AND r1, r1, r2
 STR r1, [r0, #0x08]
 MOV pc, lr
+
+
+# this makes a clock of 1 second and then clears it
+# can be implemented to make multiple seconds
+clock_timer:
+BL start_timer
+
+	timer_loop:
+	LDR r0, =GTC_BASEADDR
+	LDR r1, [r0, #0x214]
+	CMP r1, #0x13
+	BGE check_2
+	B timer_loop
+
+	check_2:
+	BL end_timer
+	LDR r0, =GTC_BASEADDR
+	MOV r1, #0
+	STR r1, [r0, #0x210]
+	STR r1, [r0, #0x214]
+
+BX lr
+
+
