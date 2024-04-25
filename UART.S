@@ -93,21 +93,13 @@ recieve_string_UART0:
 
 	recieve_string:
 		# Grab our next character in the string
-
-		#waitFordata:
-		#PUSH {r2}
-		#LDR r2, [r0, #0x2C]
-		#AND r2, r2, #0b10
-		#CMP r2, #0
-		#BNE waitFordata
-		#POP {r2}
-
 		LDRB r3, [r0, #0x30]
 	    CMP r3, #0x3A
 		BNE recieve_string
 		BEQ recieve_info
 
 	recieve_info:
+		BL timer_calc
 		LDR r0, =UART0_BASEADDR
 		CMP r2, #4
 		BEQ recieve_string_end
