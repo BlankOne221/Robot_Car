@@ -23,6 +23,7 @@
 .include "../src/esp32.S"
 .include "../src/UART.S"
 .include "../src/RobotMotors.S"
+.include "../src/timers.S"
 
 .set SW_BASEADDR, 0x41220000
 .set BTN_BASEADDR, 0x41200000
@@ -48,22 +49,7 @@ main:
 
 	# set up all timers and interrupts
 	# place all of my setup here
-	BL initialize_GPIO
-
-	# setup interrupts
-	BL disable_interrupts
-	BL intialize_GPIO_interrupts
 	BL configure_GTC
-	BL configure_GIC
-
-	# Xil_ExceptionRegisterHandler(input id, IRQ_Handler, Data)
-	# input parameters below
-	MOV r0, #5
-	LDR r1, =IRQ_Handler
-	MOV r2, #0
-	BL Xil_ExceptionRegisterHandler
-
-	BL enable_interrupts
 
 	# setup station commands
 	BL setup_esp32
@@ -125,12 +111,12 @@ main:
 
 				B endmode
 
+			# Agree on a code here
 			Autonomous:
 
 				# Autonomous mode, runs a default program
 
 				LDR r0, =ROBO_Instructions
-				LDR r1, [r0]
 				# Store the instruction from the keypad to the label with iterator
 				MOV r5, #0x42FF
 				MOV r2, #0
@@ -150,39 +136,34 @@ main:
 
 				B endmode
 
+			# The mode works !!!!
 			Programmable:
 
 				# Programmable mode, you send instructions
 				# then it excutes all of them
 				# 10 instructions
-
+				MOV r4, #0
 				commands:
 
 				# sending in the string of bytes
 
-	   			# BL recieve_string_UART0
+	   			BL recieve_string_UART0
 	   			# assume data is in r1
 				BL writeSVNSEG
-				BL read_esp32
-
 				# data now in r5
 				MOV r5, r1
-
-				# keeps track of the iteration amount
-				MOV r4, #0
-
-				
-
-				LDR r0, =ROBO_Instructions
-				LDR r1, [r0]
-				# Store the instruction from the keypad to the label with iterator
-				STR r5, [r0, r4, LSL #1]
-
-				ADD r4, r4, #1
 
 				# check if 0x33 on keypad entered
 				CMP r5, #0x3300
 				BEQ commands_end
+
+				LDR r0, =ROBO_Instructions
+				# Store the instruction from the keypad to the label with iterator
+				STR r5, [r0, r4, LSL #1]
+
+				# iterator incrementor
+				ADD r4, r4, #1
+				BL timer_calc
 
 				B commands
 
@@ -192,25 +173,25 @@ main:
 
 				B endmode
 
-			RC:
 
+			# Should work fine
+			RC:
 				#Send one instruction and it excutes it
 
 				# sending in the string of bytes
 
-	   		# BL recieve_string_UART0
-	   		# assume data is in r1
+	   			BL recieve_string_UART0
+	   			# assume data is in r1
 				BL writeSVNSEG
-				BL read_esp32
 
 				# data now in r5
 				MOV r5, r1
 
 				LDR r0, =ROBO_Instructions
-				LDR r1, [r0]
 				# Store the instruction from the keypad to the label with iterator
 				MOV r2, #0
 				STR r5, [r0, r2, LSL #1]
+
 				# termination code after one instruction
 				MOV r5, #0x3300
 				MOV r2, #1
@@ -235,3 +216,4 @@ main:
 
 
 .end
+
