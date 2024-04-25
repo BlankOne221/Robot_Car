@@ -1,3 +1,9 @@
+.ifndef ESP32_S
+.set ESP32_S, 1
+
+.include "../src/GPIO.S"
+.include "../src/UART.S"
+
 .set UART0_BASEADDR, 0xE0000000
  .set UART1_BASEADDR, 0xE0001000
 
