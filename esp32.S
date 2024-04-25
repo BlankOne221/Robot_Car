@@ -1,36 +1,9 @@
-.ifndef ESP32_S
-.set ESP32_S, 1
-
-
-
-/*
- * esp32.S
- *
- *  Created on: Apr 23, 2020
- *      Author: jacob
- */
-
- .include "../src/GPIO.S"
- .include "../src/UART.S"
-
- .set UART0_BASEADDR, 0xE0000000
+.set UART0_BASEADDR, 0xE0000000
  .set UART1_BASEADDR, 0xE0001000
 
  .set GPIO_BASEADDR, 0xE000A000
 
  .data
- # these are purely examples for now, but note to send commands to the ESP32,
- # it doesn't have to come from the COM terminal like my example code does...
- # You could also directly send string messages to the ESP32 like examples below...
-
-	#setModeAP:   .ascii "AT+CWMODE=2\r\n\0"
-	#setCWSAP:    .ascii "AT+CWSAP=\"ESP32\",\"\",1,0,4,0\r\n\0"      // Change your ssid and pw to make them unique!
-	#setAPIP:     .ascii "AT+CIPAP=\"192.168.4.1\",\"192.168.4.1\"\r\n\0"
-	#setMux:      .ascii "AT+CIPMUX=1\r\n\0"
-	#setServer:     .ascii "AT+CIPSERVER=1,80\r\n\0"
-	#sendFromAP:  .ascii "AT+CIPSEND=0,4\r\n\0"             // Change N to number of bytes
-
-
 
  # Station Commands
  # Use the STA Commands below (setModeSta to startSend in order) to automate the setup process for the STA.
