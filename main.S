@@ -1,4 +1,4 @@
-/*
+*
  * main.S
  *
  *  Created on: Apr 4, 2022
@@ -59,51 +59,19 @@ main:
 
 	whileOne:
 
-		# UART0 is communication to and from the ESP32 chip
-		#LDR r0, =UART0_BASEADDR
-		# UART1 is communication to and from the PC
-		#LDR r1, =UART1_BASEADDR
+		# value is in r1
+		BL receive_char_UART0
+		MOV r0, r1
+		BL convert_hex
+		MOV r1, r0
 
-		# Check to see if there is anything in the UART0 RX Buffer
-		# Did the ESP32 chip send the Blackboard anything?
-		#LDR r2, [r0, #0x30]
-		#CMP r2, #0
-
-		# If there was something on the FIFO RX buffer, send it right
-		# back to the user via UART1 TX FIFO
-		# PC is going to receive the message, which will help us
-		# see the data incoming from the ESP32
-		#STRNE r2, [r1, #0x30]
-
-		# Check to see if there is anything in the UART1 RX Buffer
-		# Did the user send the Blackboard anything from the PC?
-		#LDR r3, [r1, #0x30]
-		#CMP r3, #0
-		#BEQ whileOne
-
-		# If there was something on the FIFO RX buffer, send it right
-		# back to the user via UART0 TX FIFO
-		# ESP32 is going to receive the message from our PC
-		#STR r3, [r0, #0x30]
-
-		# The full message coming from the PC doesn't include a '\n' (LF)
-		# character, so we need to add one to the end of my message
-		#CMP r3, #'\r'
-		#MOVEQ r4, #'\n'
-		#STREQ r4, [r0, #0x30]
-
-
-		#in r0 is the switch state
-		BL get_switches
-		AND r0, r0, #0xF
-		MOV r2, r0
 
 		Modes:
 
 			# branching to correct mode using switch state
 			LDR r0, =Mode
-			LDR r1, [r0, r2, LSL #2]
-			BX r1
+			LDR r2, [r0, r1, LSL #2]
+			BX r2
 
 			Nothing:
 
@@ -216,4 +184,3 @@ main:
 
 
 .end
-
