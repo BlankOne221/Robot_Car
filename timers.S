@@ -34,8 +34,6 @@ LDR r1, =0xFF0E
 STR r1, [r0, #0x08]
 MOV pc, lr
 
-.endif
-
 # Starts the timer
 start_timer:
 LDR r0, =GTC_BASEADDR
