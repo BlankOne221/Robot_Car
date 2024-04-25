@@ -17,7 +17,7 @@
 
 # Dont forget add the 0x3300 halt instruction at the end !
 # MAX 12 INSTRUCTIONS
-ROBO_Instructions: .hword 0x42FF, 0x42CF, 0x43FF, 0, 0, 0, 0, 0, 0, 0, 0, 0
+ROBO_Instructions: .hword 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 ROBO_Data: .hword 0x0080, 0x0000
 
 # All the different excutable operations we can do in the robomal
@@ -299,4 +299,3 @@ execute:
 	BX LR
 
 .endif
-
